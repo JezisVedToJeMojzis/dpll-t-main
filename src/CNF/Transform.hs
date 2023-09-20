@@ -36,8 +36,21 @@ import qualified CNF.Types as CNF
 -- Though won't grade on it, you can try to implement this function without
 -- pattern matching on the lists. Haskell already provides a lot of functions
 -- to operate on lists!
+-- Helper function to distribute a single clause (OR operation) over CNF
+
+--Helper 
+helpDistribute :: [[CNF.Lit a]] -> CNF a -> CNF a -- [[CNF.Lit a]] is list of clauses and each clause is list of literals
+helpDistribute [] _ = []
+helpDistribute (p : ps) q = [clause ++ p | clause <- q] ++ helpDistribute ps q -- p is being distributed over q
+
+-- Tests:
+-- correctly computes the base case (no conjuncts) / works
+-- correctly distributes singles /works
+-- correctly recursively distributes /works
 distribute :: CNF a -> CNF a -> CNF a
-distribute = undefined
+distribute [] _ = []
+distribute (p : ps) q = helpDistribute [p] q ++ distribute ps q 
+
 
 -- | Converts a proposition into a rigid CNF.
 --
@@ -58,5 +71,14 @@ distribute = undefined
 --   Prop may represent formulas in CNF, but also  other formulas. Using the
 --   rigid form allows us to avoid runtime checks to see whether a Prop is in
 --   CNF as needed for DPLL.
+
+-- Tests:
+-- keeps literals (and their negation) [v]
+-- removes double negatives [v]
+-- distributes disjuncts (and leaves conjuncts) [x]
+-- applies De-Morgans law [x]
+-- recursively applies all cases [x]
 cnf :: Prop a -> CNF a
-cnf = undefined
+cnf (Lit p) = [[CNF.Lit p]]  -- keeps lit
+cnf (Neg (Lit p)) = [[CNF.Neg p]]  --keeps neg lit
+cnf (Neg (Neg p)) = cnf p -- removes double neg
