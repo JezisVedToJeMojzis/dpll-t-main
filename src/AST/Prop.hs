@@ -58,8 +58,8 @@ assocr p = p
 
 -- | Implication
 (-->) :: Prop a -> Prop a -> Prop a
-(-->) = undefined
+p --> q = Neg p :|: q 
 
 -- | Bi-Implication
 (<->) :: Prop a -> Prop a -> Prop a
-(<->) = undefined
+p <-> q = (p --> q) :&: (q --> p)
