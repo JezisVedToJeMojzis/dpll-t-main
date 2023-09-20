@@ -20,6 +20,7 @@ import Control.Monad ((>=>), foldM)
 import Control.Monad.Writer
 import Control.Monad.Trans.Maybe (runMaybeT)
 
+
 -- | A solution given by the DPLL algorithm.
 type Solution a = [Lit a]
 
@@ -40,9 +41,35 @@ type Solver a m = (MonadWriter (Solution a) m, Alternative m, Eq a)
 --
 -- Make sure to add the literal that will be resolved to the solution via
 -- a call to 'tell'!
-resolve :: Solver a m => CNF a -> Lit a -> m (CNF a)
-resolve = undefined
 
+-- converting Lit a into [Lit a] -> Bool
+convertLitToFunction :: Eq a => Lit a -> [Lit a] -> Bool
+convertLitToFunction lit = elem lit
+
+litInCnf :: Eq a => Lit a -> CNF a -> Bool
+litInCnf lit cnf = any (elem lit) cnf
+
+negLitInCnf :: Eq a => Lit a -> CNF a -> Bool
+negLitInCnf negatedLit cnf = any (elem negatedLit) cnf
+
+-- Tests:
+-- removes Or if it contained the literal / just format error, instead of [] there is [[]]
+-- removes literal from Or if negation was contained / works 
+-- does both operations when cases are mixed / just format error , instead of [[Lit x0,Lit x2]] there is [[],[Lit x0,Lit x2],[]]
+-- adds literals to the model when it resolves them 
+resolve :: (Solver a m, Show a) => CNF a -> Lit a -> m (CNF a)
+resolve cnf lit = do
+    let basicCnf = cnf
+    let negLit = negate lit -- negating literal
+    tell [lit] -- saves literals to model
+    if litInCnf lit cnf || negLitInCnf negLit cnf -- checking if there are specified literals in the cnf
+      then do
+        let updatedCnf = [clause | clause <- cnf, not (lit `elem` clause || negLit `elem` clause)] -- each clause in cnf is filtered
+        return updatedCnf
+      else 
+        return basicCnf
+
+    
 -- | Pure Literal Elimination (PLE)
 --
 -- Resolve variables if they only occur positively or
@@ -51,8 +78,15 @@ resolve = undefined
 --
 -- Do make sure to remove new pure literals that
 -- occur due to PLE!
+
+-- there cant be variable which is positive (not negated) and negated at the same time
+-- Tests:
+-- resolves occurences of pure literals
+-- recursively resolves new pure literals
 ple :: Solver a m => CNF a -> m (CNF a)
 ple = undefined
+
+
 
 -- | Boolean Constraint Propagation (BCP)
 --
