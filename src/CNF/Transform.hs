@@ -75,11 +75,14 @@ distribute (p : ps) q = helpDistribute [p] q ++ distribute ps q
 -- Tests:
 -- keeps literals (and their negation) [v]
 -- removes double negatives [v]
--- distributes disjuncts (and leaves conjuncts) [x]
--- applies De-Morgans law [x]
--- recursively applies all cases [x]
+-- distributes disjuncts (and leaves conjuncts) [v]
+-- applies De-Morgans law [v]
+-- recursively applies all cases [v]
 cnf :: Prop a -> CNF a
 cnf (Lit p) = [[CNF.Lit p]]  -- keeps lit
 cnf (Neg (Lit p)) = [[CNF.Neg p]]  --keeps neg lit
 cnf (Neg (Neg p)) = cnf p -- removes double neg
-
+cnf (p :&: q) = cnf p ++ cnf q -- conjunction
+cnf (p :|: q) = distribute (cnf p) (cnf q) -- disjunction
+cnf (Neg (p :&: q)) = distribute (cnf (Neg p)) (cnf (Neg q)) -- De-Morgans law
+cnf (Neg (p :|: q)) = cnf ((Neg p) :&: (Neg q))  -- De-Morgans law 
