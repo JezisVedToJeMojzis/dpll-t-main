@@ -80,7 +80,7 @@ resolve cnf lit = do
     filterClause :: Eq a => Lit a -> [Lit a] -> [Lit a]
     filterClause lit clause
       | mixedCases lit clause = []  -- both neg lit and lit
-      | negLitInClause lit clause = filter (/= negate lit) clause -- neg lit
+      | negLitInClause lit clause = filter (/= negate lit) clause -- neg lit (remove lit)
       | litInClause lit clause = [] -- lit (removing or)
       | otherwise = clause -- nothing changes
     
