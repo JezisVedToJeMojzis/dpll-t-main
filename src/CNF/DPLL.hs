@@ -174,19 +174,7 @@ try cnf lit = do
 -- We don't expect any heuristics to pick branches in this implementation. Thus,
 -- you may just pick any literal to branch on.
 branch :: Solver a m => CNF a -> m ()
-branch cnf =
-    case cnf of
-        [] -> return ()  -- Case 3: No more variables to choose (satisfiable)
-        (clause : rest) ->
-            -- Case 2: There is a variable to choose
-            case clause of
-                [] -> empty  -- Case 1: No more solutions for this branch (failure)
-                lit : _ -> do
-                    -- Try both positive and negative occurrences of the first literal
-                    try cnf lit <|> try cnf (negate lit)
-
-                    -- If either of the above tries succeeded, return to propagate the success
-                    return ()
+branch = undefined
 
 -- | The DPLL procedure. 
 --
