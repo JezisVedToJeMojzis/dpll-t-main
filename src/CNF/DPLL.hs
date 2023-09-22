@@ -45,33 +45,44 @@ type Solver a m = (MonadWriter (Solution a) m, Alternative m, Eq a)
 -- Make sure to add the literal that will be resolved to the solution via
 -- a call to 'tell'!
 
--- converting Lit a into [Lit a] -> Bool
-convertLitToFunction :: Eq a => Lit a -> [Lit a] -> Bool
-convertLitToFunction lit = elem lit
-
+-- check cnf
 litInCnf :: Eq a => Lit a -> CNF a -> Bool
 litInCnf lit cnf = any (elem lit) cnf
 
 negLitInCnf :: Eq a => Lit a -> CNF a -> Bool
 negLitInCnf negatedLit cnf = any (elem negatedLit) cnf
 
+--check clauses
+litInClause :: Eq a => Lit a -> [Lit a] -> Bool
+litInClause lit clause = lit `elem` clause
+
+negLitInClause :: Eq a => Lit a -> [Lit a] -> Bool
+negLitInClause negLit clause = negate negLit `elem` clause
+
+mixedCases :: Eq a => Lit a -> [Lit a] -> Bool
+mixedCases lit clause = lit `elem` clause && negate lit `elem` clause
+
+--remove empty brackets
+removeEmptyClauses :: CNF a -> CNF a
+removeEmptyClauses cnf = filter (not . null) cnf
+
 -- Tests:
 -- removes Or if it contained the literal / just format error, instead of [] there is [[]]
 -- removes literal from Or if negation was contained / works 
 -- does both operations when cases are mixed / just format error , instead of [[Lit x0,Lit x2]] there is [[],[Lit x0,Lit x2],[]]
 -- adds literals to the model when it resolves them 
-resolve :: (Solver a m, Show a) => CNF a -> Lit a -> m (CNF a)
+resolve :: Solver a m => CNF a -> Lit a -> m (CNF a)
 resolve cnf lit = do
-    let basicCnf = cnf
-    let negLit = negate lit -- negating literal
-    tell [lit] -- saves literals to model
-    if litInCnf lit cnf || negLitInCnf negLit cnf -- checking if there are specified literals in the cnf
-      then do
-        let updatedCnf = [clause | clause <- cnf, not (lit `elem` clause || negLit `elem` clause)] -- each clause in cnf is filtered
-        return updatedCnf
-      else 
-        return basicCnf
-
+    let updatedCnf = filterClause lit <$> cnf -- <$> is infix for fmap (we are applying filterClause to each clause within cnf)
+    tell [lit] -- logging
+    return (removeEmptyClauses updatedCnf) -- no brackets
+  where
+    filterClause :: Eq a => Lit a -> [Lit a] -> [Lit a]
+    filterClause lit clause
+      | mixedCases lit clause = []  -- both neg lit and lit
+      | negLitInClause lit clause = filter (/= negate lit) clause -- neg lit
+      | litInClause lit clause = [] -- lit (removing or)
+      | otherwise = clause -- nothing changes
     
 -- | Pure Literal Elimination (PLE)
 --
@@ -117,10 +128,6 @@ ple cnf = do
         else 
           return cnf
 
-
-
-
-
 -- | Boolean Constraint Propagation (BCP)
 --
 -- Remove all occurences of single variables according
@@ -129,7 +136,8 @@ ple cnf = do
 -- Do make sure to remove new single occurences that
 -- occur due to BCP!
 bcp :: Solver a m => CNF a -> m (CNF a)
-bcp = undefined
+bcp = undefined 
+
 
 -- | Attempts to solve the constraints by resolving
 -- the given literal. Picking a constraint in this
@@ -138,8 +146,10 @@ bcp = undefined
 --
 -- You may want to implement this function as a
 -- helper for 'branch'.
-try :: Solver a m => CNF a -> Lit a -> m ()
-try = undefined
+try :: Solver a m => CNF a -> Lit a -> m () --idk if it really works since resolve is not rly correct
+try cnf lit = do
+    resolvedCnf <- resolve cnf lit
+    dpll resolvedCnf -- recursion
 
 -- | Branch in the Depth First Search. (i.e. try both occurences of a variable)
 --
@@ -164,7 +174,19 @@ try = undefined
 -- We don't expect any heuristics to pick branches in this implementation. Thus,
 -- you may just pick any literal to branch on.
 branch :: Solver a m => CNF a -> m ()
-branch = undefined
+branch cnf =
+    case cnf of
+        [] -> return ()  -- Case 3: No more variables to choose (satisfiable)
+        (clause : rest) ->
+            -- Case 2: There is a variable to choose
+            case clause of
+                [] -> empty  -- Case 1: No more solutions for this branch (failure)
+                lit : _ -> do
+                    -- Try both positive and negative occurrences of the first literal
+                    try cnf lit <|> try cnf (negate lit)
+
+                    -- If either of the above tries succeeded, return to propagate the success
+                    return ()
 
 -- | The DPLL procedure. 
 --
