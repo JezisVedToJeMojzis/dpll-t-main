@@ -1,3 +1,6 @@
+{-# LANGUAGE NegativeLiterals #-}
+{-# LANGUAGE NegativeLiterals #-}
+{-# LANGUAGE NegativeLiterals #-}
 module CNF.DPLL
   ( Solution
   , resolve
@@ -79,12 +82,42 @@ resolve cnf lit = do
 -- Do make sure to remove new pure literals that
 -- occur due to PLE!
 
+
+litsInCnf :: CNF a -> [Lit a]
+litsInCnf = foldr (++) []
+
+getNegativeLiterals :: Eq a => CNF a -> [Lit a]
+getNegativeLiterals cnf = filter (\lit -> not (litInCnf lit cnf)) (litsInCnf cnf)
+
+getPositiveLiterals :: Eq a => CNF a -> [Lit a]
+getPositiveLiterals cnf = filter (\lit -> not (negLitInCnf (negate lit) cnf)) (litsInCnf  cnf)
+
+-- getPureLiterals :: Eq a => CNF a -> [Lit a]
+-- getPureLiterals cnf = getPositiveLiterals cnf ++ getNegativeLiterals cnf
+
+getPureLiterals :: Eq a => CNF a -> [Lit a]
+getPureLiterals cnf = 
+  let
+    positiveLiterals = getPositiveLiterals cnf
+    negativeLiterals = getNegativeLiterals cnf
+    in positiveLiterals ++ negativeLiterals
+
 -- there cant be variable which is positive (not negated) and negated at the same time
 -- Tests:
--- resolves occurences of pure literals
--- recursively resolves new pure literals
+-- resolves occurences of pure literals / works
+-- recursively resolves new pure literals / works
 ple :: Solver a m => CNF a -> m (CNF a)
-ple = undefined
+ple cnf = do
+    let pureLiterals = getPureLiterals cnf
+    if not (null pureLiterals) 
+        then do
+            tell pureLiterals
+            let updatedCnf =  [clause | clause <- cnf, not (any (`elem` pureLiterals) clause)] -- filters caluses that contain pureLiterals
+            ple updatedCnf  -- recursion
+        else 
+          return cnf
+
+
 
 
 
