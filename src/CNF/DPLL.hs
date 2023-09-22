@@ -64,26 +64,36 @@ mixedCases lit clause = lit `elem` clause && negate lit `elem` clause
 
 --remove empty brackets
 removeEmptyClauses :: CNF a -> CNF a
-removeEmptyClauses cnf = filter (not . null) cnf
+removeEmptyClauses = filter (not . null)
+
+--removing the lit but keeping the clause (brackets [])
+filterClauseNeg :: Eq a => Lit a -> [Lit a] -> [Lit a]
+filterClauseNeg lit clause
+      | negLitInClause lit clause = filter (/= negate lit) clause
+      | otherwise = clause 
+
+convertToSingleCNF :: [CNF a] -> CNF a
+convertToSingleCNF = concat
 
 -- Tests:
--- removes Or if it contained the literal / just format error, instead of [] there is [[]]
--- removes literal from Or if negation was contained / works 
--- does both operations when cases are mixed / just format error , instead of [[Lit x0,Lit x2]] there is [[],[Lit x0,Lit x2],[]]
+-- removes Or if it contained the literal 
+-- removes literal from Or if negation was contained 
+-- does both operations when cases are mixed 
 -- adds literals to the model when it resolves them 
 resolve :: Solver a m => CNF a -> Lit a -> m (CNF a)
 resolve cnf lit = do
-    let updatedCnf = filterClause lit <$> cnf -- <$> is infix for fmap (we are applying filterClause to each clause within cnf)
+    let updatedCnfLit = filterClauseLit lit <$> cnf
+    let updatedCnfNeg = filterClauseNeg lit <$> convertToSingleCNF updatedCnfLit
     tell [lit] -- logging
-    return (removeEmptyClauses updatedCnf) -- no brackets
+    return updatedCnfNeg
   where
-    filterClause :: Eq a => Lit a -> [Lit a] -> [Lit a]
-    filterClause lit clause
-      | mixedCases lit clause = []  -- both neg lit and lit
-      | negLitInClause lit clause = filter (/= negate lit) clause -- neg lit (remove lit)
-      | litInClause lit clause = [] -- lit (removing or)
-      | otherwise = clause -- nothing changes
-    
+    filterClauseLit :: Eq a => Lit a -> [Lit a] -> CNF a --removing the clause if lit was there
+    filterClauseLit lit clause
+      | litInClause lit clause = []  -- remove the whole clause
+      | null clause = [[]] -- keep initial empty brackets
+      | otherwise = [clause] -- nothing changes
+
+  
 -- | Pure Literal Elimination (PLE)
 --
 -- Resolve variables if they only occur positively or
@@ -92,7 +102,6 @@ resolve cnf lit = do
 --
 -- Do make sure to remove new pure literals that
 -- occur due to PLE!
-
 
 litsInCnf :: CNF a -> [Lit a]
 litsInCnf = foldr (++) []
