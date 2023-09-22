@@ -54,8 +54,14 @@ fresh = do
 -- - You should first get a fresh variable before recursing
 -- - On binary operands, the left hand side should be recursed first
 tseitin :: (MonadState ID m, MonadWriter (CNF ID) m) => Prop ID -> m (Prop ID)
-tseitin = undefined
+tseitin (Lit p) = return (Lit p)  -- single variable, no need to transform
+tseitin (Neg p) = do
+  fresh_p <- fresh  -- Generate a fresh propositional variable fresh_p
+  tell (cnf (Neg fresh_p :|: Neg p))  -- Add the CNF clause (¬fresh_p ∨ ¬p)
+  tell (cnf (fresh_p :|: p))  -- Add the CNF clause (fresh_p ∨ p)
+  return fresh_p  -- Return the fresh variable for ¬p
 
+  
 -- | Get an equisatisfiable CNF by tseitins transformation. Renames the
 -- CNF before running the transformation, such that we can create fresh
 -- variables.
