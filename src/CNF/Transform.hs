@@ -82,7 +82,4 @@ cnf :: Prop a -> CNF a
 cnf (Lit p) = [[CNF.Lit p]]  -- keeps lit
 cnf (Neg (Lit p)) = [[CNF.Neg p]]  --keeps neg lit
 cnf (Neg (Neg p)) = cnf p -- removes double neg
-cnf (And p q) = distribute (cnf p) (cnf q) -- conjunction
-cnf (Or p q)  = concat (cnf p ++ cnf q)  -- disjunction
-cnf (Neg (And p q)) = distribute (cnf (Neg p)) (cnf (Neg q)) -- De-Morgans law
-cnf (Neg (Or p q)) = cnf (And (Neg p) (Neg q))  -- De-Morgans law
+
