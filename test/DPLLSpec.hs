@@ -41,11 +41,11 @@ rubric = distribute $ do
     it "removes Or if it contained the literal" $ do
       resolve' (lit 0) [] @?= []
       resolve' (lit 0) [[lit 0]] @?= []
-      resolve' (lit 0) [[], [lit 1, lit 0, lit 2], [lit 2]] @?= [[], [lit 2]]
+      resolve' (lit 0) [[], [lit 1, lit 0, lit 2], [lit 2]] @?= [[lit 2]]
 
     it "removes literal from Or if negation was contained" $ do
-      resolve' (lit 0) [[neg 0]] @?= [[]] 
-      resolve' (neg 2) [[], [lit 1, lit 0, lit 2], [lit 2]] @?= [[], [lit 1, lit 0], []]
+      resolve' (lit 0) [[neg 0]] @?= [] 
+      resolve' (neg 2) [[], [lit 1, lit 0, lit 2], [lit 2]] @?= [[lit 1, lit 0]]
 
     it "does both operations when cases are mixed" $ do
       resolve' (neg 1) [[neg 1, lit 1], [lit 0, lit 1, lit 2], [neg 1]] @?= [[lit 0, lit 2]]
