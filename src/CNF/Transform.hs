@@ -38,15 +38,10 @@ import qualified CNF.Types as CNF
 -- to operate on lists!
 -- Helper function to distribute a single clause (OR operation) over CNF
 
-reverseClause :: [CNF.Lit a] -> [CNF.Lit a] 
-reverseClause = reverse
-
-reverseCnf :: CNF a -> CNF a
-reverseCnf = map reverseClause
-
+--Helper 
 helpDistribute :: [[CNF.Lit a]] -> CNF a -> CNF a -- [[CNF.Lit a]] is list of clauses and each clause is list of literals
 helpDistribute [] _ = []
-helpDistribute (p : ps) q = [clause ++ p | clause <- q] ++ helpDistribute ps q -- p is being distributed over q
+helpDistribute (p : ps) q = [p ++ clause | clause <- q] ++ helpDistribute ps q -- p is being distributed over q
 
 -- Tests:
 -- correctly computes the base case (no conjuncts) / works
@@ -54,7 +49,7 @@ helpDistribute (p : ps) q = [clause ++ p | clause <- q] ++ helpDistribute ps q -
 -- correctly recursively distributes /works
 distribute :: CNF a -> CNF a -> CNF a
 distribute [] _ = []
-distribute (p : ps) q = reverseCnf (helpDistribute [p] q ++ distribute ps q) 
+distribute (p : ps) q = helpDistribute [p] q ++ distribute ps q 
 
 
 -- | Converts a proposition into a rigid CNF.
