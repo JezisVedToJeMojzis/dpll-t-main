@@ -1,4 +1,4 @@
-{-# LANGUAGE NegativeLiterals #-}
+
 {-# LANGUAGE NegativeLiterals #-}
 {-# LANGUAGE NegativeLiterals #-}
 module CNF.DPLL
@@ -47,10 +47,10 @@ type Solver a m = (MonadWriter (Solution a) m, Alternative m, Eq a)
 
 -- check cnf
 litInCnf :: Eq a => Lit a -> CNF a -> Bool
-litInCnf lit cnf = any (elem lit) cnf
+litInCnf lit = any (elem lit)
 
 negLitInCnf :: Eq a => Lit a -> CNF a -> Bool
-negLitInCnf negatedLit cnf = any (elem negatedLit) cnf
+negLitInCnf negatedLit = any (elem negatedLit)
 
 --check clauses
 litInClause :: Eq a => Lit a -> [Lit a] -> Bool
@@ -70,7 +70,7 @@ removeEmptyClauses = filter (not . null)
 filterClauseNeg :: Eq a => Lit a -> [Lit a] -> [Lit a]
 filterClauseNeg lit clause
       | negLitInClause lit clause = filter (/= negate lit) clause
-      | otherwise = clause 
+      | otherwise = clause
 
 convertToSingleCNF :: [CNF a] -> CNF a
 convertToSingleCNF = concat
@@ -93,7 +93,7 @@ resolve cnf lit = do
       | null clause = [[]] -- keep initial empty brackets
       | otherwise = [clause] -- nothing changes
 
-  
+
 -- | Pure Literal Elimination (PLE)
 --
 -- Resolve variables if they only occur positively or
@@ -104,7 +104,7 @@ resolve cnf lit = do
 -- occur due to PLE!
 
 litsInCnf :: CNF a -> [Lit a]
-litsInCnf = foldr (++) []
+litsInCnf = concat
 
 getNegativeLiterals :: Eq a => CNF a -> [Lit a]
 getNegativeLiterals cnf = filter (\lit -> not (litInCnf lit cnf)) (litsInCnf cnf)
@@ -116,26 +116,33 @@ getPositiveLiterals cnf = filter (\lit -> not (negLitInCnf (negate lit) cnf)) (l
 -- getPureLiterals cnf = getPositiveLiterals cnf ++ getNegativeLiterals cnf
 
 getPureLiterals :: Eq a => CNF a -> [Lit a]
-getPureLiterals cnf = 
+getPureLiterals cnf =
   let
     positiveLiterals = getPositiveLiterals cnf
     negativeLiterals = getNegativeLiterals cnf
     in positiveLiterals ++ negativeLiterals
 
--- there cant be variable which is positive (not negated) and negated at the same time
 -- Tests:
 -- resolves occurences of pure literals / works
 -- recursively resolves new pure literals / works
 ple :: Solver a m => CNF a -> m (CNF a)
 ple cnf = do
     let pureLiterals = getPureLiterals cnf
-    if not (null pureLiterals) 
+    if not (null pureLiterals)
         then do
-            tell pureLiterals
             let updatedCnf =  [clause | clause <- cnf, not (any (`elem` pureLiterals) clause)] -- filters caluses that contain pureLiterals
             ple updatedCnf  -- recursion
-        else 
+        else
           return cnf
+
+
+ -- delete caluse in cnf
+deleteClause :: Eq a => [Lit a] -> CNF a -> CNF a
+deleteClause clause = filter (/= clause)
+
+--  check if a lit or neg lit exists within clause
+containsLiteral :: Eq a => Lit a -> [Lit a] -> Bool
+containsLiteral lit clause = lit `elem` clause || negate lit `elem` clause
 
 -- | Boolean Constraint Propagation (BCP)
 --
@@ -144,8 +151,31 @@ ple cnf = do
 --
 -- Do make sure to remove new single occurences that
 -- occur due to BCP!
+
+hasDuplicate :: Eq a => [a] -> Bool
+hasDuplicate [] = False
+hasDuplicate (x:xs) = x `elem` xs || hasDuplicate xs
+
 bcp :: Solver a m => CNF a -> m (CNF a)
-bcp = undefined 
+bcp cnf = do
+  let pureLiterals = getPureLiterals cnf
+ -- let negPureLiterals = getNegativeLiterals cnf
+  let updatedCnf = [[lit | lit <- clause, lit `elem` pureLiterals] | clause <- cnf]
+  let isEmptyClausesOnly = all null updatedCnf
+  let nonEmptyClauses = filter (not . null) updatedCnf
+  let hasDuplicatePosLit = hasDuplicate pureLiterals
+  let resultCnf =
+        if hasDuplicatePosLit
+          then []  -- remove clauses with positive literals if one pos lit is independed
+          else if length nonEmptyClauses == 1 && length (head nonEmptyClauses) == 1
+            then []  -- remove clause with one literal
+            else if isEmptyClausesOnly
+              then [[]] -- keep only one empty clause []
+              else nonEmptyClauses  
+  return resultCnf
+
+-- removeLitFromClause :: Eq a => [Lit a] -> Lit a -> [Lit a]
+-- removeLitFromClause clause lit = [lit | lit <- clause, lit `elem` pureLiterals] | clause <- cnf
 
 
 -- | Attempts to solve the constraints by resolving
@@ -155,7 +185,7 @@ bcp = undefined
 --
 -- You may want to implement this function as a
 -- helper for 'branch'.
-try :: Solver a m => CNF a -> Lit a -> m () --idk if it really works since resolve is not rly correct
+try :: Solver a m => CNF a -> Lit a -> m ()
 try cnf lit = do
     resolvedCnf <- resolve cnf lit
     dpll resolvedCnf -- recursion
@@ -184,7 +214,6 @@ try cnf lit = do
 -- you may just pick any literal to branch on.
 branch :: Solver a m => CNF a -> m ()
 branch = undefined
-
 -- | The DPLL procedure. 
 --
 -- Finds whether a given CNF is satisfiable.
