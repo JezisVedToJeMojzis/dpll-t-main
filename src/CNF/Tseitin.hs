@@ -11,6 +11,8 @@ import CNF.Types (CNF)
 import Control.Monad.State
 import Control.Monad.Writer
 
+import Debug.Trace
+
 -- | Use this to get a fresh propositional literal.
 fresh :: MonadState ID m => m (Prop ID)
 fresh = do
@@ -60,7 +62,52 @@ tseitin (Neg p) = do
   tell (cnf (Neg fresh_p :|: Neg p))  -- Add the CNF clause (¬fresh_p ∨ ¬p)
   tell (cnf (fresh_p :|: p))  -- Add the CNF clause (fresh_p ∨ p)
   return fresh_p  -- Return the fresh variable for ¬p
+tseitin (p :&: q) = do
+  fresh_p <- tseitin p
+  fresh_q <- tseitin q
+  fresh_and <- fresh  -- Generate a fresh propositional variable fresh_and
+  tell (cnf (Neg fresh_p :|: Neg fresh_q :|: fresh_and))  -- Add the CNF clause (fresh_and ∨ ¬p ∨ ¬q)
+  tell (cnf (fresh_p :|: Neg fresh_and))  -- Add the CNF clause (¬fresh_and ∨ p)
+  tell (cnf (fresh_q :|: Neg fresh_and))  -- Add the CNF clause (¬fresh_and ∨ q)
+  return fresh_and  -- Return the fresh variable for (p ∧ q)
+tseitin (p :|: q) = do
+  fresh_p <- tseitin p
+  fresh_q <- tseitin q
+  fresh_or <- fresh  -- Generate a fresh propositional variable fresh_or
+  tell (cnf (fresh_p :|: fresh_q :|: Neg fresh_or))  -- Add the CNF clause (¬fresh_or ∨ p ∨ q)
+  tell (cnf (Neg fresh_p :|: fresh_or))  -- Add the CNF clause (fresh_or ∨ ¬p)
+  tell (cnf (Neg fresh_q :|: fresh_or))  -- Add the CNF clause (fresh_or ∨ ¬q)
+  return fresh_or  -- Return the fresh variable for (p ∨ q)
 
+-- tseitin :: (MonadState ID m, MonadWriter (CNF ID) m) => Prop ID -> m (Prop ID)
+-- tseitin (Lit p) = return (Lit p)
+-- tseitin (Neg p) = do
+--   fresh_p <- fresh
+--   let msg = "Neg case: p = " ++ show p ++ ", fresh_p = " ++ show fresh_p
+--   traceM msg
+--   tell (cnf (Neg fresh_p :|: Neg p))
+--   tell (cnf (fresh_p :|: p))
+--   return fresh_p
+-- tseitin (p :&: q) = do
+--   fresh_p <- tseitin p
+--   fresh_q <- tseitin q
+--   fresh_and <- fresh
+--   let msg = "Conjunct case: p = " ++ show p ++ ", q = " ++ show q ++ ", fresh_p = " ++ show fresh_p ++ ", fresh_q = " ++ show fresh_q ++ ", fresh_and = " ++ show fresh_and
+--   traceM msg
+--   tell (cnf (Neg fresh_p :|: Neg fresh_q :|: fresh_and))
+--   tell (cnf (fresh_p :|: Neg fresh_and))
+--   tell (cnf (fresh_q :|: Neg fresh_and))
+--   return fresh_and
+-- tseitin (p :|: q) = do
+--   fresh_p <- tseitin p
+--   fresh_q <- tseitin q
+--   fresh_or <- fresh
+--   let msg = "Disjunct case: p = " ++ show p ++ ", q = " ++ show q ++ ", fresh_p = " ++ show fresh_p ++ ", fresh_q = " ++ show fresh_q ++ ", fresh_or = " ++ show fresh_or
+--   traceM msg
+--   tell (cnf (fresh_p :|: fresh_q :|: Neg fresh_or))
+--   tell (cnf (Neg fresh_p :|: fresh_or))
+--   tell (cnf (Neg fresh_q :|: fresh_or))
+--   return fresh_or
   
 -- | Get an equisatisfiable CNF by tseitins transformation. Renames the
 -- CNF before running the transformation, such that we can create fresh

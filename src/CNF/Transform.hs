@@ -84,5 +84,5 @@ cnf (Neg (Lit p)) = [[CNF.Neg p]]  --keeps neg lit
 cnf (Neg (Neg p)) = cnf p -- removes double neg
 cnf (p :&: q) = cnf p ++ cnf q -- conjunction
 cnf (p :|: q) = distribute (cnf p) (cnf q) -- disjunction
-cnf (Neg (p :&: q)) = distribute (cnf (Neg p)) (cnf (Neg q)) -- De-Morgans law
 cnf (Neg (p :|: q)) = cnf ((Neg p) :&: (Neg q))  -- De-Morgans law 
+cnf (Neg (p :&: q)) = distribute (cnf (Neg p)) (cnf (Neg q)) -- De-Morgans law
